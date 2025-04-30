@@ -12,35 +12,32 @@ resource "aws_instance" "medicure_ec2" {
 
   user_data = <<-EOF
               #!/bin/bash
-              set -e
+              exec > /var/log/user-data.log 2>&1
+              set -xe
 
-              # Update and install prerequisites
               apt-get update -y
               apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
-              # Install containerd
               apt install -y containerd
               mkdir -p /etc/containerd
               containerd config default > /etc/containerd/config.toml
               systemctl restart containerd
 
-              # Add Kubernetes GPG key
               mkdir -p /etc/apt/keyrings
-              curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+              curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | \
+                gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
               chmod 0644 /etc/apt/keyrings/kubernetes.gpg
 
-              # Add Kubernetes APT repo
-              echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+              echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" \
+                > /etc/apt/sources.list.d/kubernetes.list
 
-              # Install kube tools
               apt-get update -y
               apt-get install -y kubelet kubeadm kubectl
               apt-mark hold kubelet kubeadm kubectl
 
-              # Disable swap
               swapoff -a
               sed -i '/ swap / s/^/#/' /etc/fstab
-            EOF
+              EOF
 
   tags = {
     Name = "Medicure-K8s-Node"
