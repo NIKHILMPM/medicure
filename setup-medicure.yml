@@ -8,10 +8,14 @@
         kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all || true
 
     - name: Set up kubectl config for ubuntu user
-      shell: |
-        mkdir -p $HOME/.kube
-        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-        chown $(id -u):$(id -g) $HOME/.kube/config
+      become: true
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/ubuntu/.kube/config
+        remote_src: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
 
     - name: Wait for Kubernetes API server to become ready
       shell: |
