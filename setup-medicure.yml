@@ -13,12 +13,18 @@
         cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
         chown $(id -u):$(id -g) $HOME/.kube/config
 
-    - name: Install Calico CNI
+    - name: Wait for Kubernetes API server to become ready
+      shell: |
+        for i in {1..20}; do
+          kubectl get nodes && break || sleep 10
+        done
+
+    - name: Apply Calico CNI plugin
       shell: |
         kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml
 
     - name: Wait for Calico to initialize
-      shell: sleep 20
+      shell: sleep 30
 
-    - name: Check node status
+    - name: Show Kubernetes node status
       shell: kubectl get nodes
