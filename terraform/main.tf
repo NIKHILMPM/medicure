@@ -1,53 +1,76 @@
-provider "aws" {
-  region = "us-east-1"
-}
+- name: Setup Docker and Kubernetes on EC2
+  hosts: all
+  become: true
 
-resource "aws_instance" "medicure_ec2" {
-  ami                         = "ami-053b0d53c279acc90"
-  instance_type               = "t2.micro"
-  associate_public_ip_address = true
-  key_name                    = "jjk"
+  tasks:
+    - name: Update APT packages
+      apt:
+        update_cache: yes
 
-  tags = {
-    Name = "Medicure-Server"
-  }
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
 
-  vpc_security_group_ids = [aws_security_group.medicure_sg.id]
-}
+    - name: Enable and start Docker
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
 
-resource "aws_security_group" "medicure_sg" {
-  name        = "medicure_sg"
-  description = "Allow SSH and Kubernetes app access"
+    - name: Disable swap (required for Kubernetes)
+      shell: |
+        swapoff -a
+        sed -i '/ swap / s/^/#/' /etc/fstab
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+    - name: Remove old Kubernetes repo if any
+      file:
+        path: /etc/apt/sources.list.d/kubernetes.list
+        state: absent
 
-  ingress {
-    from_port   = 30081
-    to_port     = 30081
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+    - name: Remove old keyring if any
+      file:
+        path: /etc/apt/keyrings/kubernetes.gpg
+        state: absent
 
-  ingress {
-    from_port   = 6443
-    to_port     = 6443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+    - name: Install Kubernetes pre-requisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: yes
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
+    - name: Add Kubernetes GPG key securely
+      shell: |
+        mkdir -p /etc/apt/keyrings
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+        gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
 
-output "ec2_public_ip" {
-  value = aws_instance.medicure_ec2.public_ip
-}
+    - name: Ensure correct permissions for Kubernetes keyring
+      file:
+        path: /etc/apt/keyrings/kubernetes.gpg
+        mode: '0644'
+
+    - name: Add Kubernetes APT repository with signed-by
+      copy:
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        content: |
+          deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+
+    - name: Update APT again (now with Kubernetes repo)
+      apt:
+        update_cache: yes
+
+    - name: Install Kubernetes components
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+
+    - name: Hold Kubernetes packages
+      shell: apt-mark hold kubelet kubeadm kubectl
