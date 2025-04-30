@@ -23,6 +23,16 @@
         swapoff -a
         sed -i '/ swap / s/^/#/' /etc/fstab
 
+    - name: Remove old Kubernetes repo if any
+      file:
+        path: /etc/apt/sources.list.d/kubernetes.list
+        state: absent
+
+    - name: Remove old keyring if any
+      file:
+        path: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+        state: absent
+
     - name: Install Kubernetes pre-requisites
       apt:
         name:
@@ -33,17 +43,21 @@
         state: present
         update_cache: yes
 
-    - name: Add Kubernetes GPG key (secure method)
-      apt_key:
-        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-        keyring: /usr/share/keyrings/kubernetes-archive-keyring.gpg
-        state: present
+    - name: Add Kubernetes GPG key securely
+      shell: |
+        mkdir -p /usr/share/keyrings
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+          gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg
 
-    - name: Add Kubernetes APT repository
-      apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main"
-        filename: kubernetes
-        state: present
+    - name: Add Kubernetes APT repository with signed-by
+      copy:
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        content: |
+          deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+
+    - name: Update APT again (now with Kubernetes repo)
+      apt:
+        update_cache: yes
 
     - name: Install Kubernetes components
       apt:
@@ -52,7 +66,6 @@
           - kubeadm
           - kubectl
         state: present
-        update_cache: yes
 
-    - name: Hold Kubernetes packages at current version
+    - name: Hold Kubernetes packages
       shell: apt-mark hold kubelet kubeadm kubectl
