@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 resource "aws_instance" "medicure_ec2" {
-  ami                         = "ami-053b0d53c279acc90" # ✅ Ubuntu 22.04 LTS (official, stable)
+  ami                         = "ami-0f9de6e2d2f067fca" # ✅ Ubuntu 22.04 LTS (official, stable)
   instance_type               = "t2.micro"
   key_name                    = "jjk"
   associate_public_ip_address = true
