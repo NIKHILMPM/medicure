@@ -3,9 +3,9 @@ provider "aws" {
 }
 
 resource "aws_instance" "medicure_ec2" {
-  ami                    = "ami-0f9de6e2d2f067fca"  # Ubuntu 22.04 LTS
-  instance_type          = "t2.medium"
-  key_name               = "jjk"
+  ami                         = "ami-0f9de6e2d2f067fca"
+  instance_type               = "t2.medium"
+  key_name                    = "jjk"
   associate_public_ip_address = true
 
   vpc_security_group_ids = [aws_security_group.medicure_sg.id]
@@ -29,10 +29,10 @@ resource "aws_instance" "medicure_ec2" {
               curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
               chmod 0644 /etc/apt/keyrings/kubernetes.gpg
 
-              # Add Kubernetes APT repository
+              # Add Kubernetes APT repo
               echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
 
-              # Install Kubernetes components
+              # Install kube tools
               apt-get update -y
               apt-get install -y kubelet kubeadm kubectl
               apt-mark hold kubelet kubeadm kubectl
