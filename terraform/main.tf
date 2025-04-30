@@ -51,6 +51,10 @@ resource "aws_security_group" "medicure_sg" {
   name        = "medicure_sg"
   description = "Allow SSH and NodePort access"
 
+  lifecycle {
+    create_before_destroy = true
+  }
+
   ingress {
     from_port   = 22
     to_port     = 22
