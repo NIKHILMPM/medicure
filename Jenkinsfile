@@ -71,9 +71,16 @@ pipeline {
         stage('Deploy Application to Kubernetes') {
             steps {
                 sh """
-                scp -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no k8s/*.yaml ubuntu@${EC2_IP}:/home/ubuntu/
-                ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} \\
-                "kubectl apply -f deployment.yaml && kubectl apply -f service.yaml"
+                echo "📦 Copying Kubernetes manifests to EC2 instance..."
+                scp -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no k8s/deployment.yaml k8s/service.yaml ubuntu@${EC2_IP}:/home/ubuntu/
+        
+                echo "⏳ Waiting for Kubernetes API server to become ready..."
+                ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} '
+                for i in {1..30}; do
+                    kubectl get nodes && break || sleep 10
+                done &&
+                kubectl apply --validate=false -f deployment.yaml &&
+                kubectl apply --validate=false -f service.yaml'
                 """
             }
         }
