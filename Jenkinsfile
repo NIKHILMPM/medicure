@@ -67,7 +67,7 @@ pipeline {
                 '''
             }
         }
-
+        
         stage('Deploy Application to Kubernetes') {
             steps {
                 sh """
@@ -76,11 +76,13 @@ pipeline {
         
                 echo "⏳ Waiting for Kubernetes API server to become ready..."
                 ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} '
-                for i in {1..30}; do
+                  export KUBECONFIG=\$HOME/.kube/config
+                  for i in {1..30}; do
                     kubectl get nodes && break || sleep 10
-                done &&
-                kubectl apply --validate=false -f deployment.yaml &&
-                kubectl apply --validate=false -f service.yaml'
+                  done
+                  kubectl apply --validate=false -f deployment.yaml
+                  kubectl apply --validate=false -f service.yaml
+                '
                 """
             }
         }
