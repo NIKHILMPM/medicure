@@ -61,5 +61,8 @@
           kubectl get nodes | grep -q ' Ready ' && break || sleep 10
         done
 
-    - name: Show Kubernetes node status
-      shell: kubectl get nodes
+    - name: Show Kubernetes node status (retry until reachable)
+      shell: |
+        for i in {1..30}; do
+          kubectl get nodes && break || sleep 10
+        done
