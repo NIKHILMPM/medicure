@@ -60,7 +60,11 @@ pipeline {
                 script {
                     writeFile file: 'inventory.ini', text: "[medicure_servers]\n${env.EC2_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/jjk.pem"
                 }
-                sh 'ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini setup-medicure.yml'
+                sh '''
+                    echo "⏳ Waiting for EC2 SSH to be ready..."
+                    sleep 40
+                    ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini setup-medicure.yml
+                '''
             }
         }
 
