@@ -8,7 +8,6 @@
         kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all || true
 
     - name: Create .kube directory for ubuntu user
-      become: true
       file:
         path: /home/ubuntu/.kube
         state: directory
@@ -17,7 +16,6 @@
         mode: '0755'
 
     - name: Set up kubeconfig for ubuntu user
-      become: true
       copy:
         src: /etc/kubernetes/admin.conf
         dest: /home/ubuntu/.kube/config
@@ -28,13 +26,15 @@
 
     - name: Wait for Kubernetes API server to become ready
       shell: |
-        for i in {1..20}; do
+        for i in {1..30}; do
           kubectl get nodes && break || sleep 10
         done
 
-    - name: Apply Calico CNI plugin
+    - name: Apply Calico CNI plugin (retry until API is ready)
       shell: |
-        kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml
+        for i in {1..30}; do
+          kubectl apply --validate=false -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml && break || sleep 10
+        done
 
     - name: Wait for Calico to initialize
       shell: sleep 30
