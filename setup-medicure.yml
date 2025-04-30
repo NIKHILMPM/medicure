@@ -30,7 +30,7 @@
 
     - name: Remove old keyring if any
       file:
-        path: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
         state: absent
 
     - name: Install Kubernetes pre-requisites
@@ -46,21 +46,21 @@
     - name: Add Kubernetes GPG key securely
       shell: |
         mkdir -p /etc/apt/keyrings
-        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
-        gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | \
+        gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-    - name: Ensure correct permissions for Kubernetes keyring
+    - name: Set correct permissions on Kubernetes GPG key
       file:
-        path: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
         mode: '0644'
 
-    - name: Add Kubernetes APT repository using apt_repository
+    - name: Add Kubernetes APT repository (v1.29+)
       apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main"
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
         filename: kubernetes
         state: present
 
-    - name: Update APT again (now with Kubernetes repo)
+    - name: Update APT again (with new Kubernetes repo)
       apt:
         update_cache: yes
 
