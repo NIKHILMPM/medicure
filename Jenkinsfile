@@ -71,9 +71,9 @@ pipeline {
         stage('Deploy Application to Kubernetes') {
             steps {
                 sh """
-                    scp -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no k8s/*.yaml ubuntu@${EC2_IP}:/home/ubuntu/
-                    ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} \\
-                    'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f deployment.yaml && kubectl apply -f service.yaml'
+                scp -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no k8s/*.yaml ubuntu@${EC2_IP}:/home/ubuntu/
+                ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} \\
+                "kubectl apply -f deployment.yaml && kubectl apply -f service.yaml"
                 """
             }
         }
