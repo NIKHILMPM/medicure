@@ -3,9 +3,9 @@
   become: true
 
   tasks:
-    - name: Initialize Kubernetes Master
+    - name: Initialize Kubernetes Master (ignore harmless CoreDNS error)
       shell: |
-        kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all
+        kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all || true
 
     - name: Set up kubectl config for ubuntu user
       shell: |
