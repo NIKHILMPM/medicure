@@ -36,8 +36,11 @@
           kubectl apply --validate=false -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml && break || sleep 10
         done
 
-    - name: Wait for Calico to initialize
-      shell: sleep 30
+    - name: Restart kubelet service after CNI install
+      shell: systemctl restart kubelet
 
-    - name: Show Kubernetes node status
-      shell: kubectl get nodes
+    - name: Confirm Kubernetes node status (retry loop)
+      shell: |
+        for i in {1..30}; do
+          kubectl get nodes && break || sleep 10
+        done
