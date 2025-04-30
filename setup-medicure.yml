@@ -7,7 +7,16 @@
       shell: |
         kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all || true
 
-    - name: Set up kubectl config for ubuntu user
+    - name: Create .kube directory for ubuntu user
+      become: true
+      file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Set up kubeconfig for ubuntu user
       become: true
       copy:
         src: /etc/kubernetes/admin.conf
