@@ -1,72 +1,24 @@
-- name: Setup Docker and Kubernetes on EC2
+- name: Initialize Kubernetes and Install CNI
   hosts: all
   become: true
 
   tasks:
-    - name: Disable swap (required for Kubernetes)
+    - name: Initialize Kubernetes Master
       shell: |
-        swapoff -a
-        sed -i '/ swap / s/^/#/' /etc/fstab
+        kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all
 
-    - name: Update APT packages
-      apt:
-        update_cache: yes
-
-    - name: Install prerequisites
-      apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-        state: present
-
-    - name: Install containerd (runtime)
-      apt:
-        name: containerd
-        state: present
-
-    - name: Configure containerd defaults
+    - name: Set up kubectl config for ubuntu user
       shell: |
-        mkdir -p /etc/containerd
-        containerd config default | tee /etc/containerd/config.toml
-        systemctl restart containerd
+        mkdir -p $HOME/.kube
+        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+        chown $(id -u):$(id -g) $HOME/.kube/config
 
-    - name: Create directory for Kubernetes GPG key
-      file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
-
-    - name: Add Kubernetes GPG key (new repo)
+    - name: Install Calico CNI
       shell: |
-        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | \
-        gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
-      args:
-        warn: false
+        kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.1/manifests/calico.yaml
 
-    - name: Set correct permissions on keyring
-      file:
-        path: /etc/apt/keyrings/kubernetes.gpg
-        mode: '0644'
+    - name: Wait for Calico to initialize
+      shell: sleep 20
 
-    - name: Add Kubernetes APT repo (modern method)
-      copy:
-        dest: /etc/apt/sources.list.d/kubernetes.list
-        content: |
-          deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
-
-    - name: Update APT cache with Kubernetes repo
-      apt:
-        update_cache: yes
-
-    - name: Install Kubernetes tools
-      apt:
-        name:
-          - kubelet
-          - kubeadm
-          - kubectl
-        state: present
-
-    - name: Hold Kubernetes versions
-      shell: apt-mark hold kubelet kubeadm kubectl
+    - name: Check node status
+      shell: kubectl get nodes
