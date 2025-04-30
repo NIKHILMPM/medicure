@@ -74,12 +74,18 @@ pipeline {
                 echo "📦 Copying Kubernetes manifests to EC2 instance..."
                 scp -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no k8s/deployment.yaml k8s/service.yaml ubuntu@${EC2_IP}:/home/ubuntu/
         
-                echo "⏳ Waiting for Kubernetes API server to become ready..."
+                echo "⏳ Waiting for Kubernetes API server to be fully ready..."
                 ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} '
                   export KUBECONFIG=\$HOME/.kube/config
+                  
+                  # Wait for kubelet to register node as Ready
                   for i in {1..30}; do
-                    kubectl get nodes && break || sleep 10
+                    kubectl get nodes | grep -q " Ready " && break
+                    echo "[\$i] Kubernetes API not ready, waiting..."
+                    sleep 10
                   done
+        
+                  # Apply manifests
                   kubectl apply --validate=false -f deployment.yaml
                   kubectl apply --validate=false -f service.yaml
                 '
