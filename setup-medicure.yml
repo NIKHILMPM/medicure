@@ -11,7 +11,7 @@
         name: docker.io
         state: present
 
-    - name: Enable Docker service
+    - name: Enable and start Docker
       systemd:
         name: docker
         enabled: yes
@@ -22,14 +22,36 @@
         swapoff -a
         sed -i '/ swap / s/^/#/' /etc/fstab
 
-    - name: Install Kubernetes tools
+    - name: Install pre-requisites for Kubernetes
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: true
+
+    - name: Add Kubernetes APT key securely
       shell: |
-        apt-get update && apt-get install -y apt-transport-https ca-certificates curl gpg
         mkdir -p /etc/apt/keyrings
-        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
-        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
-        apt-get update
-        apt-get install -y kubelet kubeadm kubectl
-        apt-mark hold kubelet kubeadm kubectl
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+          gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
 
+    - name: Add Kubernetes APT repository
+      copy:
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        content: |
+          deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
 
+    - name: Install Kubernetes tools
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+        update_cache: true
+
+    - name: Hold Kubernetes packages
+      shell: apt-mark hold kubelet kubeadm kubectl
