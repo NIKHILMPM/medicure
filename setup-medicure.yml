@@ -3,37 +3,16 @@
   become: true
 
   tasks:
-    - name: Update APT packages
-      apt:
-        update_cache: yes
-
-    - name: Install Docker
-      apt:
-        name: docker.io
-        state: present
-
-    - name: Enable and start Docker
-      systemd:
-        name: docker
-        enabled: yes
-        state: started
-
     - name: Disable swap (required for Kubernetes)
       shell: |
         swapoff -a
         sed -i '/ swap / s/^/#/' /etc/fstab
 
-    - name: Remove old Kubernetes repo if any
-      file:
-        path: /etc/apt/sources.list.d/kubernetes.list
-        state: absent
+    - name: Update APT packages
+      apt:
+        update_cache: yes
 
-    - name: Remove old keyring if any
-      file:
-        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        state: absent
-
-    - name: Install Kubernetes pre-requisites
+    - name: Install prerequisites
       apt:
         name:
           - apt-transport-https
@@ -41,30 +20,47 @@
           - curl
           - gnupg
         state: present
-        update_cache: yes
 
-    - name: Add Kubernetes GPG key securely
-      shell: |
-        mkdir -p /etc/apt/keyrings
-        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | \
-        gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-
-    - name: Set correct permissions on Kubernetes GPG key
-      file:
-        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        mode: '0644'
-
-    - name: Add Kubernetes APT repository (v1.29+)
-      apt_repository:
-        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
-        filename: kubernetes
+    - name: Install containerd (runtime)
+      apt:
+        name: containerd
         state: present
 
-    - name: Update APT again (with new Kubernetes repo)
+    - name: Configure containerd defaults
+      shell: |
+        mkdir -p /etc/containerd
+        containerd config default | tee /etc/containerd/config.toml
+        systemctl restart containerd
+
+    - name: Create directory for Kubernetes GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Kubernetes GPG key (new repo)
+      shell: |
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | \
+        gpg --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+      args:
+        warn: false
+
+    - name: Set correct permissions on keyring
+      file:
+        path: /etc/apt/keyrings/kubernetes.gpg
+        mode: '0644'
+
+    - name: Add Kubernetes APT repo (modern method)
+      copy:
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        content: |
+          deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+
+    - name: Update APT cache with Kubernetes repo
       apt:
         update_cache: yes
 
-    - name: Install Kubernetes components
+    - name: Install Kubernetes tools
       apt:
         name:
           - kubelet
@@ -72,5 +68,5 @@
           - kubectl
         state: present
 
-    - name: Hold Kubernetes packages
+    - name: Hold Kubernetes versions
       shell: apt-mark hold kubelet kubeadm kubectl
