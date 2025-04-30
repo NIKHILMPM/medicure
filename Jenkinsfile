@@ -55,7 +55,7 @@ pipeline {
             }
         }
 
-        stage('Configure Server with Ansible') {
+        stage('Initialize Kubernetes with Ansible') {
             steps {
                 script {
                     writeFile file: 'inventory.ini', text: "[medicure_servers]\n${env.EC2_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/jjk.pem"
@@ -68,22 +68,23 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Deploy Application to Kubernetes') {
             steps {
                 sh """
                     scp -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no k8s/*.yaml ubuntu@${EC2_IP}:/home/ubuntu/
-                    ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} 'kubectl apply -f deployment.yaml && kubectl apply -f service.yaml'
+                    ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} \\
+                    'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f deployment.yaml && kubectl apply -f service.yaml'
                 """
             }
         }
 
-        stage('Wait for App') {
+        stage('Wait for App to Start') {
             steps {
                 sh 'sleep 30'
             }
         }
 
-        stage('Test with Selenium') {
+        stage('Run Selenium Test') {
             steps {
                 withEnv(["APP_URL=http://${EC2_IP}:30081"]) {
                     sh 'python3 selenium_test.py'
