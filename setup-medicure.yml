@@ -1,6 +1,7 @@
 - name: Setup Docker and Kubernetes on EC2
   hosts: all
   become: true
+
   tasks:
     - name: Update APT packages
       apt:
@@ -22,7 +23,7 @@
         swapoff -a
         sed -i '/ swap / s/^/#/' /etc/fstab
 
-    - name: Install pre-requisites for Kubernetes
+    - name: Install Kubernetes pre-requisites
       apt:
         name:
           - apt-transport-https
@@ -30,28 +31,28 @@
           - curl
           - gnupg
         state: present
-        update_cache: true
+        update_cache: yes
 
-    - name: Add Kubernetes APT key securely
-      shell: |
-        mkdir -p /etc/apt/keyrings
-        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
-          gpg --dearmor -o /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+    - name: Add Kubernetes GPG key (secure method)
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        keyring: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+        state: present
 
     - name: Add Kubernetes APT repository
-      copy:
-        dest: /etc/apt/sources.list.d/kubernetes.list
-        content: |
-          deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main"
+        filename: kubernetes
+        state: present
 
-    - name: Install Kubernetes tools
+    - name: Install Kubernetes components
       apt:
         name:
           - kubelet
           - kubeadm
           - kubectl
         state: present
-        update_cache: true
+        update_cache: yes
 
-    - name: Hold Kubernetes packages
+    - name: Hold Kubernetes packages at current version
       shell: apt-mark hold kubelet kubeadm kubectl
