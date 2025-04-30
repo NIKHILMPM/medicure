@@ -1,0 +1,31 @@
+- name: Setup Docker and Kubernetes on EC2
+  hosts: all
+  become: true
+  tasks:
+    - name: Update APT packages
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Enable Docker service
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Disable swap (required for Kubernetes)
+      shell: |
+        swapoff -a
+        sed -i '/ swap / s/^/#/' /etc/fstab
+
+    - name: Install kubeadm, kubelet, kubectl
+      shell: |
+        apt-get update && apt-get install -y apt-transport-https curl
+        curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+        echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+        apt-get update && apt-get install -y kubelet kubeadm kubectl
+        apt-mark hold kubelet kubeadm kubectl
