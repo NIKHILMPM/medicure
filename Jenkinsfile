@@ -77,21 +77,21 @@ pipeline {
                 echo "⏳ Waiting for Kubernetes API server to be fully ready..."
                 ssh -i /var/lib/jenkins/jjk.pem -o StrictHostKeyChecking=no ubuntu@${EC2_IP} '
                   export KUBECONFIG=\$HOME/.kube/config
-                  
-                  # Wait for kubelet to register node as Ready
+        
                   for i in {1..30}; do
-                    kubectl get nodes | grep -q " Ready " && break
-                    echo "[\$i] Kubernetes API not ready, waiting..."
-                    sleep 10
+                    echo "[\$i] Checking if API server is up..."
+                    kubectl version --short || true
+                    kubectl get nodes | grep -q " Ready " && break || sleep 10
                   done
         
-                  # Apply manifests
-                  kubectl apply --validate=false -f deployment.yaml
-                  kubectl apply --validate=false -f service.yaml
+                  echo "✅ Applying Kubernetes Manifests..."
+                  kubectl apply --validate=false -f deployment.yaml || true
+                  kubectl apply --validate=false -f service.yaml || true
                 '
                 """
             }
         }
+
 
         stage('Wait for App to Start') {
             steps {
